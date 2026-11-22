@@ -1,0 +1,1869 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>美联储利率阶梯图 · 2000–2026</title>
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.3.0/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+      :root {
+        --bg: #131722;
+        --panel: #1e222d;
+        --panel2: #252930;
+        --line: #2a2e39;
+        --line2: #363a45;
+        --txt: #d1d4dc;
+        --dim: #8a8f9c;
+        --dimmer: #5d616e;
+        --hike: #f23645; /* 加息 = 红 */
+        --cut: #089981; /* 降息 = 绿 */
+        --blue: #2962ff;
+        --hike-bg: rgba(242, 54, 69, 0.14);
+        --cut-bg: rgba(8, 153, 129, 0.14);
+        --mono:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        --sans:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      }
+      html[data-theme="light"] {
+        --bg: #ffffff;
+        --panel: #ffffff;
+        --panel2: #f0f3fa;
+        --line: #e9edf4;
+        --line2: #d1d4dc;
+        --txt: #131722;
+        --dim: #6a6d78;
+        --dimmer: #b2b5be;
+        --hike: #d9303f;
+        --cut: #00996f;
+        --hike-bg: rgba(217, 48, 63, 0.1);
+        --cut-bg: rgba(0, 153, 111, 0.1);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--txt);
+        font-family: var(--sans);
+        -webkit-font-smoothing: antialiased;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+      }
+      /* 整页固定布局：顶栏 / 图表 / 表格 三段，仅表格内部滚动 */
+      .app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+      }
+      a {
+        color: var(--blue);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      code {
+        font-family: var(--mono);
+      }
+
+      /* ---------------- 顶栏 ---------------- */
+      header.bar {
+        flex: none;
+        position: relative;
+        z-index: 40;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        padding: 8px 16px;
+      }
+      .logo {
+        width: 22px;
+        height: 22px;
+        border-radius: 5px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #2962ff, #089981);
+        color: #fff;
+        font-weight: 800;
+        font-size: 12px;
+        flex: none;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .brand small {
+        font-weight: 400;
+        font-size: 12px;
+        color: var(--dim);
+      }
+      .meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .meta .lbl {
+        font-weight: 600;
+      }
+      .meta .badge {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--dim);
+        border: 1px solid var(--line2);
+        border-radius: 3px;
+        padding: 0 4px;
+        line-height: 15px;
+      }
+      .meta .now {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
+      .meta .now.hike {
+        color: var(--hike);
+        background: var(--hike-bg);
+      }
+      .meta .now.cut {
+        color: var(--cut);
+        background: var(--cut-bg);
+      }
+      .legend {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 12px;
+        color: var(--dim);
+        white-space: nowrap;
+      }
+      .legend i {
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 4px;
+      }
+      .legend .step {
+        width: 16px;
+        height: 9px;
+        border-left: 2px solid var(--blue);
+        border-top: 2px solid var(--blue);
+        border-bottom: 2px solid var(--blue);
+      }
+      .legend .tri-h {
+        border-left: 4.5px solid transparent;
+        border-right: 4.5px solid transparent;
+        border-bottom: 7px solid var(--hike);
+      }
+      .legend .tri-c {
+        border-left: 4.5px solid transparent;
+        border-right: 4.5px solid transparent;
+        border-top: 7px solid var(--cut);
+      }
+
+      /* ---------------- 图表 ---------------- */
+      #chartSec {
+        width: 100%;
+        max-width: 100vw;
+        min-width: 0;
+        flex: 0 0 auto;
+        height: clamp(300px, 48vh, 720px);
+        position: relative;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      #chart {
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 0;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+      }
+      /* 库内部的面板/画布全部绝对定位，不能参与容器宽度计算 */
+      #chart > .tv-lightweight-charts {
+        position: absolute !important;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+      }
+      /* TradingView 左侧残留的价格轴占位列（不显示轴但会占 36px）：整列隐藏 */
+      #chart > .tv-lightweight-charts table td:first-child {
+        display: none;
+      }
+      /* 右侧价格轴列：收窄到刚好容纳标签 */
+      #chart > .tv-lightweight-charts table td:last-child {
+        width: auto;
+        min-width: 0;
+        padding: 0;
+        white-space: nowrap;
+      }
+      /* HTML 标注层（只负责标签，节点/台阶由画布绘制） */
+      #labels {
+        position: absolute;
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none; /* 整层不拦截指针，手势直达图表 */
+        overflow: visible;
+        z-index: 4;
+        font-family: var(--mono);
+      }
+      /* 标签在挂载时就按内容撑开（避免测量时 offsetWidth 为 0 导致定位失效） */
+      #labels:empty {
+        display: none;
+      }
+      #chartSec {
+        overflow: hidden;
+      }
+      /* 标注：无边框的纯文字（靠颜色区分加息/降息），背景只加一点点防止和网格线糊在一起 */
+      /* 标注标签：绝对定位，left 由 JS 设为节点 x，transform 负责水平居中；vert 由 JS 设为节点 y */
+      .tag {
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform-origin: 50% 50%;
+        display: block;
+        width: max-content;
+        max-width: none;
+        margin: 0;
+        border: 0;
+        padding: 2px 3px;
+        border-radius: 2px;
+        font: 600 10px/1 var(--mono);
+        letter-spacing: 0;
+        text-align: center;
+        white-space: nowrap;
+        color: var(--dim);
+        text-shadow:
+          0 0 2px var(--bg),
+          0 0 3px var(--bg),
+          0 0 4px var(--bg);
+        /* 关键：标签不接收指针事件 —— 否则鼠标移上去会打断画布的拖拽/缩放手势 */
+        pointer-events: none;
+        user-select: none;
+        transition: opacity 0.15s;
+        will-change: transform;
+      }
+      /* 默认中性文字色，关键节点/悬停时上色；只有幅度数字一直保持红/绿 */
+      .tag.key {
+        color: var(--txt);
+      }
+      .tag.hike.key,
+      .tag.hover {
+        color: var(--hike);
+      }
+      .tag.cut.key,
+      .tag.hover {
+        color: var(--cut);
+      }
+      .tag b {
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .tag.hike b {
+        color: var(--hike);
+      }
+      .tag.cut b {
+        color: var(--cut);
+      }
+      .tag.sel {
+        opacity: 1 !important;
+        z-index: 5;
+      }
+      .tag.hide {
+        display: none;
+      }
+      .tip {
+        position: absolute;
+        z-index: 7;
+        pointer-events: none;
+        max-width: 320px;
+        min-width: 220px;
+        background: var(--panel);
+        border: 1px solid var(--line2);
+        border-radius: 6px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        padding: 9px 11px;
+        font-size: 12px;
+        line-height: 1.55;
+        opacity: 0;
+        transition: opacity 0.12s;
+      }
+      .tip.show {
+        opacity: 1;
+      }
+      .tip .d {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--dim);
+        margin-bottom: 3px;
+      }
+      .tip .r {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+      }
+      .tip .r b {
+        font-family: var(--mono);
+      }
+      .tip .ev {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid var(--line);
+      }
+      .tip .ev .h {
+        color: var(--hike);
+        font-weight: 600;
+      }
+      .tip .ev .c {
+        color: var(--cut);
+        font-weight: 600;
+      }
+      .tip .ev .m {
+        color: var(--dim);
+        font-size: 11px;
+      }
+      #warn {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        display: none;
+        place-items: center;
+        text-align: center;
+        padding: 24px;
+        background: var(--bg);
+        color: var(--dim);
+        font-size: 13px;
+        line-height: 1.9;
+        z-index: 9;
+      }
+      #warn.show {
+        display: grid;
+      }
+
+      /* ---------------- 表格 ---------------- */
+      #tableSec {
+        flex: 1 1 auto;
+        min-height: 160px;
+        display: flex;
+        flex-direction: column;
+        background: var(--panel);
+        border-top: 1px solid var(--line);
+      }
+      .tbar {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--line);
+        overflow: hidden;
+      }
+      .tbar h2 {
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .tbar .sub {
+        font-size: 11.5px;
+        color: var(--dim);
+      }
+      .tools {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--dim);
+        min-width: 0;
+        flex-wrap: wrap;
+        row-gap: 6px;
+      }
+      .tools > * {
+        flex-shrink: 0;
+      }
+      .tools input {
+        width: 200px;
+        background: var(--panel2);
+        border: 1px solid var(--line2);
+        border-radius: 4px;
+        color: var(--txt);
+        font: 12px var(--sans);
+        padding: 4px 8px;
+        outline: none;
+      }
+      .tools input:focus {
+        border-color: var(--blue);
+      }
+      .segs {
+        display: flex;
+        border: 1px solid var(--line2);
+        border-radius: 5px;
+        overflow: hidden;
+      }
+      .segs button {
+        font: 12px var(--sans);
+        color: var(--dim);
+        padding: 3px 11px;
+        line-height: 18px;
+        border: none;
+        background: none;
+        cursor: pointer;
+      }
+      .segs button + button {
+        border-left: 1px solid var(--line2);
+      }
+      .segs button.on {
+        background: rgba(41, 98, 255, 0.16);
+        color: #5b8aff;
+      }
+      .cnt {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--dimmer);
+      }
+      /* 表格滚动容器：纵向滚动只发生在这里（整页不滚动），窄屏同时支持横向滑动 */
+      .tbl-wrap {
+        flex: 1 1 auto;
+        min-height: 0;
+        width: 100%;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+      }
+      .tbl-wrap::-webkit-scrollbar {
+        height: 9px;
+      }
+      .tbl-wrap::-webkit-scrollbar-thumb {
+        background: var(--line2);
+        border-radius: 5px;
+      }
+      .tbl-wrap::-webkit-scrollbar-track {
+        background: var(--panel2);
+      }
+      table {
+        width: 100%;
+        min-width: 860px;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 12.5px;
+        table-layout: fixed;
+      }
+      th.c1 {
+        width: 132px;
+      }
+      th.c2 {
+        width: 92px;
+      }
+      th.c3 {
+        width: auto;
+      }
+      /* fixed 布局下 auto 列不会自动吸收剩余宽度：用 calc 让说明列占满 */
+      th.c3 {
+        width: calc(100% - 224px);
+      }
+      td.note {
+        white-space: normal;
+        width: auto;
+      }
+      thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--panel2);
+        color: var(--dim);
+        font-weight: 500;
+        font-size: 11.5px;
+        text-align: left;
+        padding: 8px 12px;
+        white-space: nowrap;
+        border-bottom: 1px solid var(--line2);
+        box-shadow: 0 1px 0 var(--line2);
+      }
+      tbody td {
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: middle;
+        background: var(--panel);
+      }
+      tbody tr.row {
+        cursor: pointer;
+      }
+      tbody tr.row:hover {
+        background: rgba(41, 98, 255, 0.07);
+      }
+      tbody tr.row.sel {
+        background: rgba(41, 98, 255, 0.13);
+        box-shadow: inset 3px 0 0 var(--blue);
+      }
+      .yrow td {
+        background: var(--panel2);
+        color: var(--dim);
+        font-size: 11.5px;
+        padding: 5px 12px;
+      }
+      .yrow .y {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--txt);
+        margin-right: 10px;
+      }
+      .yrow .h {
+        color: var(--hike);
+        font-weight: 600;
+        margin-right: 10px;
+      }
+      .yrow .c {
+        color: var(--cut);
+        font-weight: 600;
+        margin-right: 10px;
+      }
+      td.dt {
+        font-family: var(--mono);
+        white-space: nowrap;
+      }
+      td.dt .y {
+        color: var(--dimmer);
+      }
+      .cur {
+        display: inline-block;
+        font-size: 10px;
+        line-height: 16px;
+        white-space: nowrap;
+        vertical-align: middle;
+        padding: 0 5px;
+        border-radius: 3px;
+        background: rgba(41, 98, 255, 0.16);
+        color: #5b8aff;
+      }
+      td.chg {
+        font-family: var(--mono);
+        white-space: nowrap;
+        text-align: right;
+        font-weight: 600;
+      }
+      thead th.c2 {
+        text-align: right;
+      }
+      td.chg.hike {
+        color: var(--hike);
+      }
+      td.chg.cut {
+        color: var(--cut);
+      }
+      td.note {
+        color: var(--dim);
+        font-size: 12px;
+        line-height: 1.5;
+        word-break: break-word;
+      }
+      .note .t {
+        display: inline-block;
+        font-size: 10.5px;
+        line-height: 16px;
+        padding: 0 5px;
+        margin-right: 6px;
+        border-radius: 3px;
+        border: 1px solid var(--line2);
+        color: var(--dim);
+      }
+      .note .t.crisis {
+        border-color: rgba(242, 54, 69, 0.5);
+        color: var(--hike);
+      }
+      .note .t.chair {
+        border-color: rgba(41, 98, 255, 0.5);
+        color: #5b8aff;
+      }
+      .note .t.big {
+        border-color: rgba(247, 185, 85, 0.55);
+        color: #f7b955;
+      }
+
+      footer {
+        flex: none;
+        padding: 6px 16px;
+        font-size: 11px;
+        color: var(--dimmer);
+        text-align: center;
+        background: var(--panel);
+        border-top: 1px solid var(--line);
+      }
+
+      @media (max-width: 760px) {
+        header.bar {
+          padding: 6px 10px;
+          gap: 6px 10px;
+        }
+        .brand small,
+        .meta .badge {
+          display: none;
+        }
+        .brand {
+          font-size: 13px;
+        }
+        .meta {
+          font-size: 12px;
+        }
+        .meta .lbl {
+          display: none;
+        }
+
+        /* 图表稍微矮一点，把空间留给表格 */
+        #chartSec {
+          flex: 0 0 46%;
+          height: auto;
+          min-height: 200px;
+        }
+        #tableSec {
+          flex: 1 1 auto;
+          min-height: 0;
+        }
+
+        /* 工具栏：第一行标题，第二行筛选按钮（搜索框默认隐藏，不产生横向溢出） */
+        .tbar {
+          padding: 8px 10px;
+          gap: 6px 8px;
+        }
+        .tbar .sub,
+        .tools .cnt,
+        .tools input {
+          display: none;
+        }
+        .tools {
+          margin-left: 0;
+          width: auto;
+          flex-wrap: nowrap;
+          gap: 6px;
+        }
+        .segs button {
+          padding: 3px 9px;
+          font-size: 12px;
+        }
+        input[type="search"] {
+          font-size: 16px;
+        }
+
+        /* 表格：整体保持可读宽度，在容器内左右滑动；表格区之外不影响页面 */
+        .tbl-wrap {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior-x: contain;
+        }
+        .tbl-wrap::-webkit-scrollbar {
+          height: 8px;
+        }
+        table {
+          min-width: 640px !important;
+          width: 640px;
+          font-size: 12px;
+          table-layout: fixed;
+        }
+        th.c1 {
+          width: 92px;
+        }
+        th.c2 {
+          width: 64px;
+        }
+        th.c3 {
+          width: calc(640px - 156px);
+        }
+        thead th,
+        tbody td {
+          padding: 7px 8px;
+        }
+        td.dt,
+        td.chg {
+          white-space: nowrap;
+        }
+        .yrow td {
+          padding: 5px 8px;
+          font-size: 11px;
+        }
+        .yrow .y {
+          margin-right: 8px;
+        }
+        .cur {
+          display: none;
+        }
+        .note .t {
+          display: none;
+        }
+        td.note {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="bar">
+        <div class="brand">
+          美联储利率阶梯图 <small>FED · Fed Funds Rate</small>
+        </div>
+        <div class="legend">
+          <span><i class="tri-h"></i>加息</span>
+          <span><i class="tri-c"></i>降息</span>
+        </div>
+      </header>
+
+      <section id="chartSec">
+        <div id="chart"></div>
+        <div id="labels"></div>
+        <div class="tip" id="tip"></div>
+        <div id="warn">
+          <div>
+            ⚠️ Lightweight Charts v5 加载失败<br />
+            需要联网访问 <code>cdn.jsdelivr.net/npm/lightweight-charts@5</code
+            ><br />
+            下方时间线表格不受影响。
+          </div>
+        </div>
+      </section>
+
+      <section id="tableSec">
+        <div class="tbar">
+          <h2>加降息时间线</h2>
+          <span class="sub" id="sub"></span>
+          <div class="tools">
+            <input id="q" type="search" placeholder="搜索年份 / 幅度 / 事件…" />
+            <div class="segs" id="segs">
+              <button data-f="all" class="on">全部</button>
+              <button data-f="hi">▲ 加息</button>
+              <button data-f="lo">▼ 降息</button>
+            </div>
+            <span class="cnt" id="cnt"></span>
+          </div>
+        </div>
+        <div class="tbl-wrap" id="tblWrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="c1">决议日期</th>
+                <th class="c2">变动</th>
+                <th class="c3">说明</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <footer>
+          来源：<a
+            href="https://www.federalreserve.gov/monetarypolicy/openmarket.htm"
+            target="_blank"
+            rel="noopener"
+            >FOMC 目标利率变动</a
+          >
+          · 数据截至 2026-11
+        </footer>
+      </section>
+    </div>
+
+    <script>
+      /* =====================================================================
+   1) 数据：美联储政策利率全部变动（生效日）
+      来源：Federal Reserve Board — Open Market Operations
+      2008-12 之前为单一目标利率；之后为区间，取区间上限。
+   ===================================================================== */
+      const MON = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      const WEEK = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+
+      // [年, 月, 日, 变动bp(正=加息/负=降息), 变动后上限, 说明]
+      const RAW = [
+        [
+          2000,
+          2,
+          2,
+          25,
+          5.75,
+          "加息，延续 1999 年以来的紧缩周期，互联网泡沫末期。",
+        ],
+        [2000, 3, 21, 25, 6.0, "加息，经济持续过热、劳动力市场极度紧张。"],
+        [2000, 5, 16, 50, 6.5, "加息，本轮紧缩周期终点：1990 年以来最高水平。"],
+        [
+          2001,
+          1,
+          3,
+          -50,
+          6.0,
+          "紧急降息（非常规会议），纳指暴跌、经济动能迅速转弱。",
+        ],
+        [
+          2001,
+          1,
+          31,
+          -50,
+          5.5,
+          "降息，进入连续降息周期，制造业与投资已现衰退迹象。",
+        ],
+        [2001, 3, 20, -50, 5.0, "降息，科技股泡沫破裂，美国经济步入衰退。"],
+        [2001, 4, 18, -50, 4.5, "会议间紧急降息。"],
+        [2001, 5, 15, -50, 4.0, "降息，通胀压力温和，政策转向全力托底经济。"],
+        [2001, 6, 27, -25, 3.75, "降息，逐步收窄单次降息幅度。"],
+        [2001, 8, 21, -25, 3.5, "降息，九一一事件前夜经济疲弱。"],
+        [
+          2001,
+          9,
+          17,
+          -50,
+          3.0,
+          "九一一事件后首次会议降息，为金融市场提供流动性支持。",
+        ],
+        [2001, 10, 2, -50, 2.5, "降息，应对恐怖袭击冲击与信心崩塌。"],
+        [2001, 11, 6, -50, 2.0, "降息，经济衰退确认。"],
+        [
+          2001,
+          12,
+          11,
+          -25,
+          1.75,
+          "降息，2001 年最后一次降息（全年累计 −475bp）。",
+        ],
+        [
+          2002,
+          11,
+          6,
+          -50,
+          1.25,
+          "降息，时隔近一年再次降息，就业复苏乏力、通缩担忧升温。",
+        ],
+        [2003, 6, 25, -25, 1.0, "降息至 1958 年以来最低的 1.00%。"],
+        [
+          2004,
+          6,
+          30,
+          25,
+          1.25,
+          "加息，时隔四年重启紧缩，开启 2004–2006 年的“渐进加息”。",
+        ],
+        [2004, 8, 10, 25, 1.5, "加息，每次仅 25bp 的“有计划、可预期”式紧缩。"],
+        [2004, 9, 21, 25, 1.75, "加息，经济稳步复苏。"],
+        [2004, 11, 10, 25, 2.0, "加息，通胀开始抬头。"],
+        [2004, 12, 14, 25, 2.25, "加息，维持 25bp 节奏。"],
+        [2005, 2, 2, 25, 2.5, "加息，“格林斯潘之谜”：加息但长端收益率仍偏低。"],
+        [2005, 3, 22, 25, 2.75, "加息，继续以 25bp 节奏推进。"],
+        [2005, 5, 3, 25, 3.0, "加息，通胀压力持续上升。"],
+        [2005, 6, 30, 25, 3.25, "加息，房地产与信贷市场热度高涨。"],
+        [2005, 8, 9, 25, 3.5, "加息，能源价格高企推升整体通胀。"],
+        [2005, 9, 20, 25, 3.75, "加息，卡特里娜飓风后仍延续紧缩。"],
+        [2005, 11, 1, 25, 4.0, "加息，通胀预期高企。"],
+        [2005, 12, 13, 25, 4.25, "加息，市场预期紧缩仍将继续。"],
+        [2006, 1, 31, 25, 4.5, "加息，伯南克接任美联储主席后的首次加息。"],
+        [2006, 3, 28, 25, 4.75, "加息，房地产价格见顶回落。"],
+        [
+          2006,
+          6,
+          29,
+          25,
+          5.25,
+          "加息，2004–2006 年紧缩周期终点：连续 17 次加息共 +425bp。",
+        ],
+        [2007, 9, 18, -50, 4.75, "大幅降息，次贷危机蔓延，伯南克的首轮宽松。"],
+        [2007, 10, 31, -25, 4.5, "降息，次贷损失扩大、信贷市场紧缩。"],
+        [
+          2007,
+          12,
+          11,
+          -25,
+          4.25,
+          "降息，应对银行间流动性紧张与同业拆借市场冻结。",
+        ],
+        [2008, 1, 22, -75, 3.5, "紧急降息 75bp（非常规会议），全球股市暴跌。"],
+        [2008, 1, 30, -50, 3.0, "降息，九天内累计降息 125bp。"],
+        [2008, 3, 18, -75, 2.25, "降息，贝尔斯登倒闭前夕。"],
+        [2008, 4, 30, -25, 2.0, "降息，金融动荡持续升级。"],
+        [
+          2008,
+          10,
+          8,
+          -50,
+          1.5,
+          "与 ECB、英国央行等六家主要央行同步紧急降息，雷曼破产后的危机应对。",
+        ],
+        [2008, 10, 29, -50, 1.0, "降息，全球金融危机全面爆发。"],
+        [
+          2008,
+          12,
+          16,
+          -100,
+          0.25,
+          "降息 75–100bp，区间首次降至 0–0.25%，零利率时代开启（此后启动大规模 QE）。",
+        ],
+        [
+          2015,
+          12,
+          17,
+          25,
+          0.5,
+          "加息，时隔近 7 年首次加息，耶伦启动货币政策正常化。",
+        ],
+        [
+          2016,
+          12,
+          15,
+          25,
+          0.75,
+          "加息，特朗普当选后市场预期财政刺激推升通胀。",
+        ],
+        [2017, 3, 16, 25, 1.0, "加息，经济稳健增长、就业强劲。"],
+        [2017, 6, 15, 25, 1.25, "加息，同时公布缩表计划。"],
+        [2017, 12, 14, 25, 1.5, "加息，配合缩表推进。"],
+        [2018, 3, 22, 25, 1.75, "加息，鲍威尔接任美联储主席后的首次加息。"],
+        [2018, 6, 14, 25, 2.0, "加息，核心通胀接近 2% 目标。"],
+        [2018, 9, 27, 25, 2.25, "加息，美联储上调点阵图指引。"],
+        [
+          2018,
+          12,
+          20,
+          25,
+          2.5,
+          "加息，本轮周期顶点：累计加息 9 次共 +225bp，随后政策急转弯。",
+        ],
+        [
+          2019,
+          8,
+          1,
+          -25,
+          2.25,
+          "降息，十年来首次降息，“中期调整”式保险式降息。",
+        ],
+        [2019, 9, 19, -25, 2.0, "降息，贸易摩擦与全球经济放缓。"],
+        [2019, 10, 31, -25, 1.75, "降息，本轮“保险式降息”终点，此后暂停观察。"],
+        [
+          2020,
+          3,
+          4,
+          -50,
+          1.25,
+          "紧急降息 50bp（非常规会议），新冠疫情开始冲击全球经济。",
+        ],
+        [
+          2020,
+          3,
+          16,
+          -100,
+          0.25,
+          "紧急降息至区间下限 0–0.25%，重启“零利率 + 无限量 QE”。",
+        ],
+        [
+          2022,
+          3,
+          17,
+          25,
+          0.5,
+          "加息，美联储时隔三年重启加息，抗击 40 年最高通胀。",
+        ],
+        [2022, 5, 5, 50, 1.0, "加息 50bp，22 年来首次单次加息 50bp。"],
+        [2022, 6, 16, 75, 1.75, "加息 75bp，1994 年以来最大单次加息幅度。"],
+        [2022, 7, 28, 75, 2.5, "连续第二次加息 75bp，通胀仍处高位。"],
+        [
+          2022,
+          9,
+          22,
+          75,
+          3.25,
+          "连续第三次加息 75bp，点阵图暗示年内继续大幅加息。",
+        ],
+        [2022, 11, 3, 75, 4.0, "第四次连续加息 75bp，全年最陡峭的紧缩。"],
+        [2022, 12, 15, 50, 4.5, "加息 50bp，放缓加息步伐但仍保持紧缩。"],
+        [2023, 2, 2, 25, 4.75, "加息 25bp，回到常规节奏。"],
+        [
+          2023,
+          3,
+          23,
+          25,
+          5.0,
+          "加息 25bp，硅谷银行（SVB）危机冲击下仍继续加息抗通胀。",
+        ],
+        [2023, 5, 4, 25, 5.25, "加息 25bp，措辞暗示可能接近紧缩终点。"],
+        [
+          2023,
+          7,
+          27,
+          25,
+          5.5,
+          "加息至 22 年来最高 5.25–5.50%；2022–2023 紧缩周期累计 +525bp。",
+        ],
+        [2024, 9, 19, -50, 5.0, "降息 50bp，抗击通胀取得进展后开启宽松周期。"],
+        [2024, 11, 8, -25, 4.75, "降息 25bp，特朗普胜选后的首次议息会议。"],
+        [
+          2024,
+          12,
+          19,
+          -25,
+          4.5,
+          "降息 25bp，点阵图下调 2025 年降息预期至 2 次。",
+        ],
+        [
+          2025,
+          9,
+          18,
+          -25,
+          4.25,
+          "降息 25bp，近 9 个月暂停后重启降息，劳动力市场降温。",
+        ],
+        [2025, 10, 30, -25, 4.0, "降息 25bp，并宣布 12 月 1 日起结束缩表。"],
+        [2025, 12, 11, -25, 3.75, "降息 25bp，连续第三次降息。"],
+        [
+          2026,
+          9,
+          17,
+          25,
+          4.0,
+          "加息 25bp，重启紧缩，将区间上调至 3.75–4.00%。",
+        ],
+      ];
+
+      const START = "2000-01-01"; // 数据起点
+      const END = "2026-11-18"; // 当前时间（数据终点）
+      const VIEW_FROM = "2023-06-01"; // 默认视野起点：左侧只露出最后两次加息（2023-02-02、2023-03-23 起）
+      const VIEW_TO = "2026-11-18"; // 默认视野终点：当前时间
+      const pad = (n) => String(n).padStart(2, "0");
+      const ymd = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+
+      const EVENTS = RAW.map(([y, m, d, bp, upper, note], i) => {
+        const date = new Date(y, m - 1, d);
+        const kind = bp > 0 ? "hike" : "cut";
+        let flag = "";
+        if (/紧急/.test(note)) flag = "crisis";
+        else if (/首次|接任|终点|顶点/.test(note)) flag = "chair";
+        else if (Math.abs(bp) >= 50) flag = "big";
+        return {
+          i,
+          y,
+          m,
+          d,
+          bp,
+          upper,
+          lower: Math.max(0, +(upper - 0.25).toFixed(2)),
+          note,
+          kind,
+          flag,
+          ts: ymd(y, m, d),
+          dow: date.getDay(),
+          date,
+        };
+      });
+      const LAST = EVENTS[EVENTS.length - 1];
+      const PRE_2000 = EVENTS[0].upper - EVENTS[0].bp / 100; // 2000-01-01 的利率
+      // 每个事件的“前/后事件日期”，用于构造阶梯帽（U 形 ▲/▼）
+      EVENTS.forEach((e, i) => {
+        const prev = EVENTS[i - 1];
+        const next = EVENTS[i + 1];
+        const before = new Date(e.date);
+        before.setDate(before.getDate() - 1);
+        const after = new Date(e.date);
+        after.setDate(after.getDate() + 1);
+        e.before = ymd(
+          before.getFullYear(),
+          before.getMonth() + 1,
+          before.getDate(),
+        );
+        e.after = ymd(
+          after.getFullYear(),
+          after.getMonth() + 1,
+          after.getDate(),
+        );
+        e.prevTs = prev ? prev.ts : START;
+        e.nextTs = next ? next.ts : END;
+        e.prevUpper = prev ? prev.upper : PRE_2000;
+      });
+      const isKey = (e) =>
+        Math.abs(e.bp) >= 50 || e.flag === "chair" || e.flag === "crisis";
+
+      /* =====================================================================
+   2) 阶梯序列：每个节点当日跳变，之后保持水平（由 WithSteps 画出直角台阶）
+   ===================================================================== */
+      function stepSeries() {
+        const out = [];
+        let level = PRE_2000;
+        for (const e of EVENTS) {
+          const before = new Date(e.date);
+          before.setDate(before.getDate() - 1);
+          out.push({
+            time: ymd(
+              before.getFullYear(),
+              before.getMonth() + 1,
+              before.getDate(),
+            ),
+            value: level,
+          });
+          out.push({ time: e.ts, value: e.upper });
+          level = e.upper;
+        }
+        out.push({ time: END, value: level });
+        const seen = new Set();
+        return out
+          .filter((p) => !seen.has(p.time) && seen.add(p.time))
+          .sort((a, b) => (a.time < b.time ? -1 : 1))
+          .map((p) => ({
+            ...p,
+            lineType: LightweightCharts.LineType.WithSteps,
+          }));
+      }
+
+      /* =====================================================================
+   3) 画布标注层：节点 ▲▼ + 选中圈（标签用 HTML 叠在上面）
+   ===================================================================== */
+      const chartBox = document.getElementById("chart");
+      const labelBox = document.getElementById("labels");
+      const tip = document.getElementById("tip");
+      const canvas = document.createElement("canvas");
+      canvas.style.cssText =
+        "position:absolute;left:0;top:0;pointer-events:none;z-index:3";
+      chartBox.appendChild(canvas);
+      const cx = canvas.getContext("2d");
+      const CSS = () => getComputedStyle(document.documentElement);
+      const col = (name) => CSS().getPropertyValue(name).trim();
+      // 画布使用“CSS 像素 × 设备像素比”的原始值，不做截断：
+      // 截断（如 2.625 → 2.5、3 → 2.5）会让画布内容与 CSS 尺寸错配，表现为整体缩放/偏移。
+      const DPR = () => window.devicePixelRatio || 1;
+      let W = 0,
+        H = 0;
+      // 在图表就绪前先按容器高度估算，避免首帧把标签判为“放不下”而全部隐藏
+      const initialH = () =>
+        document.getElementById("chart").clientHeight || 300;
+
+      let chart = null,
+        series = null;
+
+      let hoverEv = null,
+        selEv = null,
+        rafId = 0;
+      const tags = new Map(); // id -> HTML 标签
+
+      /* =====================================================================
+   4) 初始化图表
+   ===================================================================== */
+      function initChart() {
+        if (!window.LightweightCharts) {
+          document.getElementById("warn").classList.add("show");
+          return;
+        }
+        const LC = LightweightCharts;
+        // 记录价格轴宽度，供时间轴对齐
+
+        chart = LC.createChart(chartBox, {
+          autoSize: true,
+          layout: {
+            background: { type: "solid", color: col("--bg") },
+            textColor: col("--dim"),
+            fontFamily: CSS().getPropertyValue("--sans").trim() || "sans-serif",
+            fontSize: 11,
+            attributionLogo: false,
+          },
+          grid: {
+            vertLines: { color: col("--line") },
+            horzLines: { color: col("--line") },
+          },
+          crosshair: {
+            mode: LC.CrosshairMode.Normal,
+            vertLine: {
+              color: col("--dim"),
+              style: LC.LineStyle.Dashed,
+              labelBackgroundColor: col("--line2"),
+            },
+            horzLine: {
+              color: col("--dim"),
+              style: LC.LineStyle.Dashed,
+              labelBackgroundColor: col("--line2"),
+            },
+          },
+          leftPriceScale: {
+            visible: false, // 左侧不显示价格轴（避免左侧出现整列空白）
+          },
+          rightPriceScale: {
+            borderColor: col("--line2"),
+            autoScale: true, // Y 随视野自动缩放
+            scaleMargins: { top: 0.18, bottom: 0.12 },
+            minimumWidth: 34, // 只要放得下 “4%” 即可
+          },
+          timeScale: {
+            borderColor: col("--line2"),
+            borderVisible: true,
+            rightOffset: 0,
+            minBarSpacing: 0.01,
+            lockVisibleTimeRangeOnResize: true,
+            visible: true,
+            // 刻度文字：跨度短时显示“年 / 月”，足够密时才显示日期
+            tickMarkFormatter: (time, tickMarkType) => {
+              const d =
+                typeof time === "string"
+                  ? new Date(time + "T00:00:00")
+                  : new Date(Date.UTC(time.year, time.month - 1, time.day));
+              const y = d.getFullYear(),
+                m = d.getMonth() + 1;
+              // tickMarkType: 0=Year 1=Month 2=DayOfMonth 3=Time 4=TimeWithSeconds
+              if (tickMarkType === 0) return `${y}年`;
+              if (tickMarkType === 1) return m === 1 ? `${y}年` : `${m}月`;
+              return `${m}月${d.getDate()}日`;
+            },
+          },
+          handleScroll: {
+            mouseWheel: true,
+            pressedMouseMove: true,
+            horzTouchDrag: true,
+            vertTouchDrag: false,
+          },
+          handleScale: {
+            axisPressedMouseMove: { time: true, price: true },
+            mouseWheel: true,
+            pinch: true,
+          },
+          localization: {
+            locale: "zh-CN",
+            priceFormatter: (v) => {
+              const n =
+                Math.abs(v - Math.round(v)) < 1e-9
+                  ? v.toFixed(0)
+                  : v.toFixed(1);
+              return n + "%";
+            },
+          },
+        });
+
+        series = chart.addSeries(LC.LineSeries, {
+          color: "#2962ff",
+          lineWidth: 3,
+          lineType: LC.LineType.WithSteps, // 关键：水平 → 垂直 → 水平 的直角阶梯
+          priceLineVisible: false,
+          lastValueVisible: true,
+          crosshairMarkerVisible: false,
+        });
+        series.setData(stepSeries());
+
+        series.createPriceLine({
+          price: LAST.upper,
+          color: LAST.kind === "hike" ? col("--hike") : col("--cut"),
+          lineWidth: 1,
+          lineStyle: LC.LineStyle.Dashed,
+          axisLabelVisible: false,
+          title: "",
+        });
+
+        focusRange(); // 默认只看 2024 年降息之后 → 现在
+        requestAnimationFrame(layout);
+
+        chart.subscribeCrosshairMove(onCross);
+        chart.timeScale().subscribeSizeChange(() => layout());
+        chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+          // 缩放/平移时只刷新标注，不重绘主图
+          cancelAnimationFrame(rafId);
+          rafId = requestAnimationFrame(() => layout());
+        });
+
+        // 键盘：← 旧 / → 新 逐条跳转
+        window.addEventListener("keydown", onKey);
+        // 容器尺寸变化后重新排布标注（图表尺寸由 autoSize 处理）
+        new ResizeObserver(() => requestAnimationFrame(layout)).observe(
+          chartBox,
+        );
+      }
+
+      function onKey(e) {
+        if (/INPUT|TEXTAREA/.test(e.target.tagName)) return;
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        const list = EVENTS;
+        const idx = selEv ? list.indexOf(selEv) : list.length - 1;
+        const next = Math.max(
+          0,
+          Math.min(list.length - 1, idx + (e.key === "ArrowRight" ? -1 : 1)),
+        );
+        focusEvent(list[next]);
+        e.preventDefault();
+      }
+
+      /* =====================================================================
+   5) 标注标签（HTML）：每个节点一个，按“上/下 + 交错”避让
+   ===================================================================== */
+      function buildTags() {
+        labelBox.innerHTML = "";
+        tags.clear();
+        for (const e of EVENTS) {
+          const el = document.createElement("div");
+          el.className = "tag " + e.kind;
+          el.innerHTML = `<b>${e.bp > 0 ? "+" : ""}${e.bp}</b>`;
+          el.classList.add("short");
+          el.title = `${e.ts} ${MON[e.m - 1]} ${e.d} · ${e.kind === "hike" ? "加息" : "降息"} ${Math.abs(e.bp)}bp → ${e.lower}%–${e.upper}%`;
+          labelBox.appendChild(el);
+          tags.set(e.i, el);
+        }
+      }
+
+      // 指针是否落在某个标签上（标签本身 pointer-events:none，靠这里做命中判断）
+      function tagAt(px, py) {
+        const pad = 2;
+        for (const b of hitBoxes) {
+          if (
+            px >= b.l - pad &&
+            px <= b.r + pad &&
+            py >= b.t - pad &&
+            py <= b.b + pad
+          )
+            return b.e;
+        }
+        return null;
+      }
+
+      function showTipAtTag(e) {
+        const x = chart.timeScale().timeToCoordinate(e.ts);
+        const y = series.priceToCoordinate(e.upper);
+        if (x != null && y != null) showTip(x, y, e.ts, e);
+      }
+
+      function layout() {
+        if (!chart || !series) return;
+
+        // 一切以“图表容器”的像素尺寸为准（容器 = 价格区 + 时间轴 + 价格轴），
+        // 不依赖库内部尺寸推算，避免 DPR/缩放/字体加载导致的不一致。
+        const cw = chartBox.clientWidth;
+        const ch = chartBox.clientHeight;
+        if (!cw || !ch) return;
+        W = cw;
+        H = ch;
+
+        // 叠加画布：CSS 尺寸 = 容器尺寸；像素尺寸 = 容器尺寸 × DPR
+        const d = DPR();
+        const pxW = Math.max(1, Math.round(cw * d));
+        const pxH = Math.max(1, Math.round(ch * d));
+        if (canvas.width !== pxW || canvas.height !== pxH) {
+          canvas.width = pxW;
+          canvas.height = pxH;
+        }
+        canvas.style.width = cw + "px";
+        canvas.style.height = ch + "px";
+        // 用 setTransform(像素比) 把绘制坐标系换算回 CSS 像素
+        cx.setTransform(d, 0, 0, d, 0, 0);
+        cx.clearRect(0, 0, cw, ch);
+
+        // 标签层与容器同尺寸同原点（不含页面滚动/缩放带来的偏差）
+        labelBox.style.width = cw + "px";
+        labelBox.style.height = ch + "px";
+
+        placeTags();
+      }
+
+      // 跳变标示完全由标签文字承担（+25 / −50 紧贴节点正上/正下方），
+      // 画布层保留为空（如需恢复小圆点/三角可在此绘制）。
+      function drawNodes() {
+        cx.clearRect(0, 0, W, H);
+      }
+
+      function placeTags() {
+        const ts = chart.timeScale();
+        const tsH = ts.height() || 28;
+        const axisTop = H - tsH; // 时间轴顶边（标签不能越过它）
+        const bottom = axisTop - 2;
+
+        // ── 1. 视口签名：视图没变（缩放/平移/尺寸都相同）就直接复用上次的排布，
+        //        避免光标移动触发重排导致标签“跳”一下。 ─────────────────────
+        const vr = (() => {
+          try {
+            return ts.getVisibleRange();
+          } catch (_) {
+            return null;
+          }
+        })();
+        const sig = [
+          W,
+          H,
+          vr
+            ? typeof vr.from === "string"
+              ? vr.from
+              : vr.from.year + "-" + vr.from.month
+            : "-",
+          vr
+            ? typeof vr.to === "string"
+              ? vr.to
+              : vr.to.year + "-" + vr.to.month
+            : "-",
+          selEv ? selEv.i : -1,
+          hoverEv ? hoverEv.i : -1,
+        ].join("|");
+
+        // 收集可视节点（每次都做，用于判断哪些标签需要显示）
+        const vis = [];
+        for (const e of EVENTS) {
+          const el = tags.get(e.i);
+          if (!el) continue;
+          const x = ts.timeToCoordinate(e.ts);
+          const y = series.priceToCoordinate(e.upper);
+          if (x == null || y == null || x < -60 || x > W + 60) {
+            el.classList.add("hide");
+            continue;
+          }
+          el.classList.remove("hide");
+          vis.push({ e, el, x, y });
+        }
+
+        // 视图与选中/悬停状态都没变 → 只同步 class，不重排、不测量（尺寸与位置保持稳定）
+        if (sig === lastSig) {
+          for (const v of vis) {
+            v.el.classList.toggle("sel", v.e === selEv);
+            v.el.classList.toggle("key", isKey(v.e));
+            v.el.classList.toggle("hover", v.e === hoverEv);
+          }
+          // 未显示的标签保持隐藏
+          const shown = new Set(hitBoxes.map((b) => b.e));
+          for (const v of vis) if (!shown.has(v.e)) v.el.classList.add("hide");
+          return;
+        }
+        lastSig = sig;
+
+        // ── 2. 测量：只在视图变化时做一次。所有状态（普通/关键/悬停/选中）共用同一字号，
+        //        因此宽度不会因为状态变化而改变，位置也就不会跳。 ───────────
+        const dims = [];
+        for (const v of vis) {
+          v.el.classList.remove("hide");
+          v.el.classList.toggle("key", isKey(v.e));
+          v.el.classList.toggle("sel", v.e === selEv);
+          v.el.classList.toggle("hover", v.e === hoverEv);
+          const rect = v.el.getBoundingClientRect();
+          dims.push({
+            e: v.e,
+            el: v.el,
+            x: v.x,
+            y: v.y,
+            w: rect.width || 24,
+            h: rect.height || 14,
+          });
+        }
+        dims.forEach((v) => v.el.classList.add("hide"));
+
+        // ── 3. 选择要显示的标签：悬停/选中的必显示；其余按“重要程度 + 靠近视野中心”节流
+        const mid = W / 2;
+        const minGapFor = (v) => Math.max(20, v.w) + 8;
+        const must = (e) => e === selEv || e === hoverEv;
+        const ranked = dims
+          .slice()
+          .sort(
+            (a, b) =>
+              (must(b.e) ? 100 : 0) - (must(a.e) ? 100 : 0) ||
+              (isKey(b.e) ? 1 : 0) - (isKey(a.e) ? 1 : 0) ||
+              Math.abs(a.x - mid) - Math.abs(b.x - mid),
+          );
+
+        const chosen = [];
+        const sparse = dims.length <= 6; // 视野内节点很少 → 全部标注
+        for (const v of ranked) {
+          if (
+            !must(v.e) &&
+            !sparse &&
+            chosen.some((c) => Math.abs(c.x - v.x) < minGapFor(v))
+          )
+            continue;
+          chosen.push(v);
+        }
+
+        // ── 4. 排布：垂直位置只取决于「节点 + 行号」，与悬停/选中无关；
+        //        冲突时逐行外推，全部固定后再按状态只改变颜色/不透明度。 ─────
+        chosen.sort((a, b) => a.x - b.x);
+        const placed = [];
+        const clash = (box) =>
+          placed.some(
+            (o) =>
+              !(box.r <= o.l || box.l >= o.r || box.b <= o.t || box.t >= o.b),
+          );
+        const LINE_GAP = 4;
+
+        for (const v of chosen) {
+          const above = v.e.kind === "hike"; // 加息在节点正上方、降息在正下方
+          const baseGap = 4; // 与阶梯线的固定留白（所有状态一致）
+          const h = v.h;
+          const tops = [];
+          for (let row = 0; row < 4; row++) {
+            tops.push(
+              above
+                ? v.y - baseGap - h - row * (h + LINE_GAP)
+                : v.y + baseGap + row * (h + LINE_GAP),
+            );
+          }
+          let box = null;
+          for (const t of tops) {
+            if (t < 1 || t + h > bottom) continue;
+            const b = { l: v.x - v.w / 2, r: v.x + v.w / 2, t, b: t + h };
+            if (!clash(b)) {
+              box = b;
+              break;
+            }
+          }
+          if (!box) continue; // 放不下就不显示（不再为悬停破例，避免跳位）
+          placed.push({ l: box.l, r: box.r, t: box.t, b: box.b, e: v.e });
+
+          v.el.classList.remove("hide");
+          v.el.classList.toggle("sel", v.e === selEv);
+          v.el.classList.toggle("key", isKey(v.e));
+          v.el.classList.toggle("hover", v.e === hoverEv);
+          // 位置固定：left = 节点 x（transform 居中），top = 计算出的行位置
+          v.el.style.left = v.x + "px";
+          v.el.style.top = Math.round(box.t) + "px";
+          v.el.style.transform = "translateX(-50%)";
+          // 只有颜色/透明度随状态变化（不会影响尺寸与位置）
+          v.el.style.opacity = must(v.e) ? 1 : isKey(v.e) ? 0.95 : 0.8;
+        }
+
+        hitBoxes = placed;
+      }
+
+      let hitBoxes = [];
+      let lastSig = ""; // 上次排布对应的“视图 + 选中/悬停”签名
+
+      /* =====================================================================
+   6) 十字线提示 + 交互
+   ===================================================================== */
+      function evAt(time) {
+        if (time == null) return null;
+        const key =
+          typeof time === "string"
+            ? time
+            : ymd(time.year, time.month, time.day);
+        return EVENTS.find((e) => e.ts === key) || null;
+      }
+
+      function onCross(param) {
+        if (!param || !param.point || param.time == null) {
+          hoverEv = null;
+          tip.classList.remove("show");
+          layout();
+          return;
+        }
+        const e = evAt(param.time);
+        hoverEv = e;
+        showTip(
+          param.point.x,
+          param.point.y,
+          typeof param.time === "string"
+            ? param.time
+            : ymd(param.time.year, param.time.month, param.time.day),
+          e,
+        );
+        layout();
+      }
+
+      function showTip(x, y, key, e) {
+        let level = PRE_2000;
+        for (const v of EVENTS) {
+          if (v.ts <= key) level = v.upper;
+          else break;
+        }
+        let html = `<div class="d">${key}</div>
+    <div class="r"><span style="color:var(--dim)">目标利率上限</span><b>${level.toFixed(2)}%</b></div>`;
+        if (e) {
+          html += `<div class="ev">
+      <div class="${e.kind === "hike" ? "h" : "c"}">${e.kind === "hike" ? "▲ 加息" : "▼ 降息"} ${Math.abs(e.bp)}bp
+        <span class="m">${WEEK[e.dow]}</span></div>
+      <div class="m">目标区间 → ${e.lower.toFixed(2)}% – ${e.upper.toFixed(2)}%</div>
+      <div>${e.note}</div></div>`;
+        } else {
+          html += `<div class="ev m">滚轮 / 双指缩放 · 按住拖动平移 · 双击回到全览</div>`;
+        }
+        tip.innerHTML = html;
+        tip.classList.add("show");
+        const tw = tip.offsetWidth,
+          th = tip.offsetHeight;
+        let lx = x + 18,
+          ly = y + 18;
+        if (lx + tw > W - 8) lx = x - tw - 18;
+        if (ly + th > H - 8) ly = Math.max(4, y - th - 18);
+        tip.style.left = Math.max(4, lx) + "px";
+        tip.style.top = Math.max(4, ly) + "px";
+      }
+
+      // 点击图表空白处取消选中；点击标签或表格行选中
+      // 指针交互：标签是 pointer-events:none，这里统一做命中判断，
+      // 因此鼠标移过标签不会打断画布的拖拽/缩放（手势始终由图表接收）。
+      let pressPos = null; // 按下位置，用于区分“拖拽”与“点击标签”
+      let hoverTagEv = null; // 当前悬停的标签事件
+
+      chartBox.addEventListener(
+        "pointerdown",
+        (e) => {
+          pressPos = { x: e.clientX, y: e.clientY };
+        },
+        true,
+      );
+
+      chartBox.addEventListener(
+        "pointermove",
+        (e) => {
+          const r = chartBox.getBoundingClientRect();
+          const px = e.clientX - r.left,
+            py = e.clientY - r.top;
+          const hit = pressPos ? null : tagAt(px, py); // 拖拽中不做标签悬停
+          if (hit !== hoverTagEv) {
+            hoverTagEv = hit;
+            // 悬停到某个标签：高亮它并显示浮层（十字线浮层由 onCross 负责，两者互不干扰）
+            if (hit && !hoverEv) {
+              hoverEv = hit;
+              layout();
+              if (chart) {
+                const x = chart.timeScale().timeToCoordinate(hit.ts);
+                const y = series.priceToCoordinate(hit.upper);
+                showTip(x, y, hit.ts, hit);
+              }
+            }
+          }
+        },
+        true,
+      );
+
+      chartBox.addEventListener("pointerup", (e) => {
+        const start = pressPos;
+        pressPos = null;
+        if (!start) return;
+        const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+        if (moved > 6) return; // 是拖拽，不是点击
+        const r = chartBox.getBoundingClientRect();
+        const hit = tagAt(e.clientX - r.left, e.clientY - r.top);
+        if (hit) {
+          focusEvent(hit);
+        }
+      });
+
+      // 鼠标离开图表：清掉标签悬停
+      chartBox.addEventListener(
+        "pointerleave",
+        () => {
+          pressPos = null;
+          hoverTagEv = null;
+        },
+        true,
+      );
+
+      chartBox.addEventListener("dblclick", (e) => {
+        focusRange();
+      });
+
+      // 把视野设成 [VIEW_FROM, END]，Y 轴随之自动缩放
+      function focusRange() {
+        if (!chart) return;
+        try {
+          chart.timeScale().setVisibleRange({ from: VIEW_FROM, to: VIEW_TO });
+        } catch (_) {
+          chart.timeScale().fitContent();
+        }
+        chart.priceScale("right").applyOptions({ autoScale: true });
+        requestAnimationFrame(layout);
+      }
+
+      function focusEvent(e) {
+        selEv = e;
+        const x = chart.timeScale().timeToCoordinate(e.ts);
+        if (x == null || x < 50 || x > W - 130) {
+          focusRange();
+        }
+        layout();
+        renderTable();
+        const tr = document.querySelector(`tr.row[data-id="${e.i}"]`);
+        if (tr) {
+          // 只在表格容器内滚动，不动整页
+          const wrap = document.getElementById("tblWrap");
+          const top =
+            tr.offsetTop - wrap.clientHeight / 2 + tr.offsetHeight / 2;
+          wrap.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+        }
+      }
+
+      /* =====================================================================
+   7) 时间线表格（新 → 旧）
+   ===================================================================== */
+      const tbody = document.getElementById("tbody");
+      let filter = "all",
+        query = "";
+
+      function fmtBp(bp) {
+        return (bp > 0 ? "+" : "") + bp + "bp";
+      }
+
+      function renderTable() {
+        const q = query.trim().toLowerCase();
+        const sorted = EVENTS.slice().sort((a, b) => b.date - a.date);
+        const list = sorted.filter(
+          (e) =>
+            (filter === "all" || (filter === "hi" ? e.bp > 0 : e.bp < 0)) &&
+            (!q ||
+              [
+                e.y,
+                pad(e.m),
+                pad(e.d),
+                e.ts,
+                e.bp,
+                Math.abs(e.bp),
+                e.kind === "hike" ? "加息" : "降息",
+                e.upper.toFixed(2),
+                e.lower.toFixed(2),
+                e.note,
+                WEEK[e.dow],
+              ]
+                .join(" ")
+                .toLowerCase()
+                .includes(q)),
+        );
+
+        let html = "",
+          year = null;
+        for (const e of list) {
+          if (e.y !== year) {
+            year = e.y;
+            const ys = sorted.filter((v) => v.y === year);
+            const hi = ys.filter((v) => v.bp > 0),
+              lo = ys.filter((v) => v.bp < 0);
+            const sumHi = hi.reduce((s, v) => s + v.bp, 0),
+              sumLo = -lo.reduce((s, v) => s + v.bp, 0);
+            html += `<tr class="yrow"><td colspan="3"><span class="y">${year}</span>
+        ${hi.length ? `<span class="h">▲ 加息 ${hi.length} 次 +${sumHi}bp</span>` : ""}
+        ${lo.length ? `<span class="c">▼ 降息 ${lo.length} 次 −${sumLo}bp</span>` : ""}
+        <span>${ys.length} 次调整</span></td></tr>`;
+          }
+          const hi = e.bp > 0;
+          const tag =
+            e.flag === "crisis"
+              ? '<span class="t crisis">紧急/非常规</span>'
+              : e.flag === "chair"
+                ? '<span class="t chair">重要节点</span>'
+                : e.flag === "big"
+                  ? '<span class="t big">大幅变动</span>'
+                  : "";
+          html += `<tr class="row ${e === selEv ? "sel" : ""}" data-id="${e.i}">
+      <td class="dt"><span class="y">${e.y}</span>-${pad(e.m)}-${pad(e.d)}${e === LAST ? '<span class="cur">当前</span>' : ""}</td>
+      <td class="chg ${hi ? "hike" : "cut"}">${hi ? "▲" : "▼"} ${fmtBp(e.bp)}</td>
+      <td class="note" title="${e.note}">${tag}${e.note}</td>
+    </tr>`;
+        }
+        if (!list.length)
+          html = `<tr><td colspan="3" style="text-align:center;color:var(--dimmer);padding:26px">没有匹配的记录</td></tr>`;
+        tbody.innerHTML = html;
+      }
+
+      tbody.addEventListener("click", (e) => {
+        const tr = e.target.closest("tr.row");
+        if (tr) focusEvent(EVENTS[+tr.dataset.id]);
+      });
+      tbody.addEventListener("mouseover", (e) => {
+        const tr = e.target.closest("tr.row");
+        hoverEv = tr ? EVENTS[+tr.dataset.id] : null;
+        layout();
+      });
+      tbody.addEventListener("mouseleave", () => {
+        hoverEv = null;
+        layout();
+      });
+
+      document.getElementById("segs").addEventListener("click", (e) => {
+        const b = e.target.closest("button[data-f]");
+        if (!b) return;
+        filter = b.dataset.f;
+        [...e.currentTarget.children].forEach((x) =>
+          x.classList.toggle("on", x === b),
+        );
+        renderTable();
+      });
+      document.getElementById("q").addEventListener("input", (e) => {
+        query = e.target.value;
+        renderTable();
+      });
+
+      /* =====================================================================
+   8) 启动
+   ===================================================================== */
+      renderTable();
+      buildTags();
+      initChart();
+      if (window.LightweightCharts) {
+        setTimeout(layout, 120);
+      }
+
+      // 顶栏高度（供表头吸顶使用）
+      const syncBar = () =>
+        document.documentElement.style.setProperty(
+          "--bar-h",
+          document.querySelector("header.bar").offsetHeight + "px",
+        );
+      syncBar();
+      window.addEventListener("resize", syncBar);
+
+      // 尺寸/像素比/可视视口变化的统一处理：合并到下一帧，只重排一次
+      let resizeRaf = 0;
+      function relayoutSoon() {
+        cancelAnimationFrame(resizeRaf);
+        resizeRaf = requestAnimationFrame(() => {
+          if (chart)
+            chart.applyOptions({
+              width: chartBox.clientWidth,
+              height: chartBox.clientHeight,
+            });
+          layout();
+        });
+      }
+      window.addEventListener("resize", relayoutSoon);
+      window.addEventListener("orientationchange", () =>
+        setTimeout(relayoutSoon, 250),
+      );
+      // 浏览器缩放 / 跨屏拖动导致的 DPR 变化（监听分辨率媒体查询）
+      const watchDpr = () => {
+        const mq = window.matchMedia(
+          `(resolution: ${window.devicePixelRatio}dppx)`,
+        );
+        const onChange = () => {
+          relayoutSoon();
+          watchDpr();
+        };
+        mq.addEventListener
+          ? mq.addEventListener("change", onChange, { once: true })
+          : mq.addListener(onChange);
+      };
+      watchDpr();
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", relayoutSoon);
+        window.visualViewport.addEventListener("scroll", () => {
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(layout);
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
